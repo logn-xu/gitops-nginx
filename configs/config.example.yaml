@@ -1,0 +1,5 @@
+logging:
+  level: info
+
+etcd:
+  endpoints: http://127.0.0.1:2379
