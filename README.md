@@ -1,6 +1,8 @@
 # GitOps Nginx Management System
 
-A GitOps-based Nginx Management System designed to bridge the gap between Git repositories and remote Nginx servers. It ensures configuration consistency, safety, and visibility through features like real-time synchronization, dry-run checks, and visual diffs across multiple environments (Production/Preview).
+[English](./README.md) | [简体中文](./README_CN.md)
+
+A GitOps-based Nginx Management System designed to bridge the gap between Git repositories and remote Nginx servers. It ensures configuration consistency, safety, and visibility through features like real-time synchronization, dry-run checks, and visual diffs across multiple environments (Production/Preview). This project makes extensive use of vibe coding code. If you find it helpful, please consider starring or submitting an issue.
 
 ## Key Features
 
