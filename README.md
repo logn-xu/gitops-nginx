@@ -1,6 +1,6 @@
 # GitOps Nginx Management System
 
-A GitOps-based system for managing Nginx configurations across multiple environments. This tool bridges the gap between Git repositories and remote Nginx servers, providing real-time synchronization, validation, and safe deployment workflows.
+A GitOps-based Nginx Management System designed to bridge the gap between Git repositories and remote Nginx servers. It ensures configuration consistency, safety, and visibility through features like real-time synchronization, dry-run checks, and visual diffs across multiple environments (Production/Preview).
 
 ## Key Features
 

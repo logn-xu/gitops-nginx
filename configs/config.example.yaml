@@ -1,5 +1,54 @@
+# API Server Configuration
+api:
+  listen: ":8080"
+  allow_origins:
+    - "*"
+
 logging:
   level: info
 
 etcd:
-  endpoints: http://127.0.0.1:2379
+  endpoints: "http://127.0.0.1:2379"
+
+
+# Git Repository Configuration
+git:
+  repo_url: "http://github.com/your-org/nginx-configs.git"
+  sync_mode: "rebase" 
+  repo_path: "./data/repo"
+  branch: "master"
+  remote_name: "origin"
+
+  auth:
+    # Options: basic, ssh, none
+    type: "basic"
+    username: "your_username"
+    password: "your_password_or_token"
+
+  # Polling settings
+  poll:
+    enabled: true
+    interval_seconds: 30
+
+
+# Syncer Configuration
+sync:
+  git_syncer:
+    key_prefix: "/gitops-nginx"
+    interval_seconds: 5
+
+  nginx_syncer:
+    key_prefix: "/gitops-nginx-remote"
+    interval_seconds: 5
+    ignore_patterns:
+      - "*.log"
+      - "temp/*"
+      - ".git/*"
+  
+  preview_syncer:
+    key_prefix: "/gitops-nginx-preview"
+    interval_seconds: 5
+    ignore_patterns:
+      - "*.log"
+      - "temp/*"
+      - ".git/*"

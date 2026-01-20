@@ -6,6 +6,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/logn-xu/gitops-nginx/internal/api"
 	"github.com/logn-xu/gitops-nginx/internal/config"
 	"github.com/logn-xu/gitops-nginx/internal/etcd"
 	"github.com/logn-xu/gitops-nginx/internal/manager"
@@ -33,22 +34,35 @@ func main() {
 	mgr := manager.NewManager()
 
 	// Initialize NginxSyncers
-	pollInterval := time.Duration(cfg.Sync.NginxSyncer.IntervalSeconds) * time.Second
-	if pollInterval == 0 {
-		pollInterval = 60 * time.Second
+	gitPollInterval := time.Duration(cfg.Sync.GitSyncer.IntervalSeconds) * time.Second
+	if gitPollInterval <= 0 {
+		gitPollInterval = 15 * time.Second
+	}
+
+	nginxPollInterval := time.Duration(cfg.Sync.NginxSyncer.IntervalSeconds) * time.Second
+	if nginxPollInterval <= 0 {
+		nginxPollInterval = 15 * time.Second
 	}
 
 	for _, group := range cfg.NginxServers {
 		for i := range group.Servers {
 			// Use pointer to the actual server config in the slice
 			server := &group.Servers[i]
-			syncer := sync.NewNginxSyncer(etcdClient, server, cfg.Sync, group.Group, pollInterval)
-			mgr.Add(syncer)
+			nginxSyncer := sync.NewNginxSyncer(etcdClient, server, &cfg.Sync, group.Group, nginxPollInterval)
+			gitSyncer := sync.NewSyncer(etcdClient, server, &cfg.Git, &cfg.Sync, group.Group, gitPollInterval)
+			previewSyncer, err := sync.NewPreviewSyncer(etcdClient, server, &cfg.Git, &cfg.Sync, group.Group)
+			if err != nil {
+				log.Logger.WithError(err).Errorf("failed to create preview syncer for %s", server.Host)
+			} else {
+				mgr.Add(previewSyncer)
+			}
+			mgr.Add(nginxSyncer)
+			mgr.Add(gitSyncer)
 		}
 	}
 
-	// TODO: Add Gin server and other syncers here
-	// e.g., mgr.Add(api.NewServer(cfg))
+	// Add API server
+	mgr.Add(api.NewServer(cfg, etcdClient))
 
 	// Start all services
 	log.Logger.Info("starting all services...")

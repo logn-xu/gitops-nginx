@@ -4,12 +4,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"os"
 	"strings"
 	"time"
 
 	"github.com/logn-xu/gitops-nginx/internal/config"
-	"github.com/logn-xu/gitops-nginx/pkg/log"
 	"github.com/pkg/sftp"
 	"golang.org/x/crypto/ssh"
 )
@@ -57,43 +57,35 @@ func NewClient(serverConfig *config.ServerConfig) (*Client, error) {
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 	}
 
-	addr := fmt.Sprintf("%s:%d", serverConfig.Host, serverConfig.Port)
-	sshClient, err := ssh.Dial("tcp", addr, sshConfig)
+	addr := net.JoinHostPort(serverConfig.Host, fmt.Sprintf("%d", serverConfig.Port))
+
+	// Use net.Dialer to set TCP Keep-Alive
+	dialer := &net.Dialer{
+		Timeout:   5 * time.Second,
+		KeepAlive: 20 * time.Second,
+	}
+	conn, err := dialer.Dial("tcp", addr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to dial SSH server at %s: %w", addr, err)
 	}
 
+	sshConn, chans, reqs, err := ssh.NewClientConn(conn, addr, sshConfig)
+	if err != nil {
+		conn.Close()
+		return nil, fmt.Errorf("failed to create SSH connection to %s: %w", addr, err)
+	}
+	sshClient := ssh.NewClient(sshConn, chans, reqs)
+
 	sftpClient, err := sftp.NewClient(sshClient)
 	if err != nil {
-		// Close the SSH client if SFTP client creation fails
 		sshClient.Close()
 		return nil, fmt.Errorf("failed to create SFTP client: %w", err)
 	}
 
-	client := &Client{
+	return &Client{
 		sshClient:  sshClient,
 		sftpClient: sftpClient,
-	}
-
-	// Start keep-alive heartbeat
-	go client.keepAlive()
-
-	return client, nil
-}
-
-// keepAlive sends a periodic heartbeat to keep the SSH connection alive.
-func (c *Client) keepAlive() {
-	keepAlive := 30 * time.Second
-
-	for {
-		// Send a global request to keep the connection alive
-		_, _, err := c.sshClient.SendRequest("keepalive@openssh.com", true, nil)
-		if err != nil {
-			log.Logger.Error("Send a global request to keep the connection alive error")
-			return
-		}
-		time.Sleep(keepAlive)
-	}
+	}, nil
 }
 
 // Close closes the SSH and SFTP connections.

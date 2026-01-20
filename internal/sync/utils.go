@@ -8,7 +8,6 @@ import (
 
 	"github.com/logn-xu/gitops-nginx/internal/etcd"
 	"github.com/logn-xu/gitops-nginx/pkg/log"
-	"github.com/sirupsen/logrus"
 )
 
 // IsIgnored checks if a file path matches any ignore pattern
@@ -29,18 +28,29 @@ func IsIgnored(filePath string, ignorePatterns []string) bool {
 		return true
 	}
 
-	// Always ignore swap files (ending with .swp)
-	if strings.HasSuffix(filename, ".swp") {
+	// Always ignore swap files (ending with .swp) or backup files (ending with ~)
+	if strings.HasSuffix(filename, ".swp") || strings.HasSuffix(filename, "~") {
+		return true
+	}
+
+	// Always ignore Vim's 4913 test file
+	if filename == "4913" {
 		return true
 	}
 
 	for _, pattern := range ignorePatterns {
+		// Use glob match for the filename
 		if matched, _ := filepath.Match(pattern, filename); matched {
 			return true
 		}
-		// Also check if path contains the pattern (for directory patterns)
-		if strings.Contains(filePath, pattern) {
-			return true
+
+		// For directory-like patterns or complex paths
+		// Split the path and check each component
+		components := strings.Split(filePath, "/")
+		for _, component := range components {
+			if matched, _ := filepath.Match(pattern, component); matched {
+				return true
+			}
 		}
 	}
 	return false
@@ -87,7 +97,7 @@ func mirrorDeleteEtcdPrefix(ctx context.Context, etcdClient *etcd.Client, prefix
 
 	// Log the cleanup activity if any keys were deleted
 	if deleted > 0 {
-		log.Logger.WithFields(logrus.Fields{
+		log.Logger.WithFields(log.Fields{
 			"prefix":  prefix,
 			"deleted": deleted,
 		}).Info("mirror deleted extra etcd keys")

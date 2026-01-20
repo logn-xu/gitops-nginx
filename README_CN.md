@@ -1,6 +1,6 @@
 # GitOps Nginx 管理系统 (GitOps Nginx Management System)
 
-一个基于 GitOps 理念的 Nginx 配置管理平台。它连接 Git 仓库与远程 Nginx 服务器，提供实时的配置同步、语法校验和安全发布流程。
+一个基于 GitOps 理念的 Nginx 配置管理平台，旨在连接 Git 仓库与远程 Nginx 服务器。它通过实时同步、预发布检查和可视化差异对比等功能，确保跨多个环境（生产/预览）的配置一致性、安全性和可见性。
 
 ## 核心功能
 

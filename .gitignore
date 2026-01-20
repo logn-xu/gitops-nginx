@@ -1,0 +1,5 @@
+.vscode/
+pkg/
+test/
+configs/servers.yaml
+configs/config.yaml

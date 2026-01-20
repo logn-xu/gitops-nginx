@@ -1,0 +1,17 @@
+nginx_servers:
+  - group: "example-group"
+    servers:
+      - name: "nginx-server-1"
+        host: "192.168.1.10"
+        port: 22
+        user: "nginx"
+        auth:
+          # Options: password, key
+          method: "password"
+          password: "your_password"
+          # key_path: "/home/user/.ssh/id_rsa"
+        nginx_config_dir: "/etc/nginx"
+        nginx_binary_path: "/usr/sbin/nginx"
+        # Optional: custom commands
+        backup_dir: "/var/backups/nginx"
+        check_dir: "/tmp/nginx_check"
