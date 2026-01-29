@@ -19,13 +19,25 @@ type Config struct {
 
 // APIConfig holds the API server configuration
 type APIConfig struct {
-	Listen       string   `mapstructure:"listen"`
-	AllowOrigins []string `mapstructure:"allow_origins"`
+	Listen               string   `mapstructure:"listen"`
+	AllowOrigins         []string `mapstructure:"allow_origins"`
+	EnableEmbeddedServer bool     `mapstructure:"enable_embedded_server"`
 }
 
 // LoggingConfig holds the logging configuration
 type LoggingConfig struct {
-	Level string `mapstructure:"level"`
+	Level     string        `mapstructure:"level"`
+	AppLog    LogFileConfig `mapstructure:"app_log"`
+	AccessLog LogFileConfig `mapstructure:"access_log"`
+}
+
+// LogFileConfig holds configuration for log files and rotation
+type LogFileConfig struct {
+	Filename   string `mapstructure:"filename"`
+	MaxSize    int    `mapstructure:"max_size"`    // megabytes
+	MaxBackups int    `mapstructure:"max_backups"` // number of backups
+	MaxAge     int    `mapstructure:"max_age"`     // days
+	Compress   bool   `mapstructure:"compress"`    // whether to compress
 }
 
 // EtcdConfig holds the etcd client configuration.
@@ -124,10 +136,25 @@ func LoadConfig() (*Config, error) {
 
 	// Set default values for main config
 	vMain.SetDefault("api.listen", ":8080")
+	vMain.SetDefault("api.allow_origins", []string{"*"})
+	vMain.SetDefault("api.enable_embedded_server", true)
+	// set sync default values
 	vMain.SetDefault("sync.nginx_syncer.key_prefix", "/gitops-nginx-remote")
 	vMain.SetDefault("sync.git_syncer.key_prefix", "/gitops-nginx")
 	vMain.SetDefault("sync.preview_syncer.key_prefix", "/gitops-nginx-preview")
+	// set logging default values
 	vMain.SetDefault("logging.level", "info")
+	vMain.SetDefault("logging.app_log.filename", "logs/gitops-nginx.log")
+	vMain.SetDefault("logging.app_log.max_size", 100)
+	vMain.SetDefault("logging.app_log.max_backups", 5)
+	vMain.SetDefault("logging.app_log.max_age", 30)
+	vMain.SetDefault("logging.app_log.compress", true)
+	vMain.SetDefault("logging.access_log.filename", "logs/access.log")
+	vMain.SetDefault("logging.access_log.max_size", 100)
+	vMain.SetDefault("logging.access_log.max_backups", 5)
+	vMain.SetDefault("logging.access_log.max_age", 30)
+	vMain.SetDefault("logging.access_log.compress", true)
+	// set etcd default values
 	vMain.SetDefault("etcd.endpoints", []string{"localhost:2379"})
 
 	if err := vMain.ReadInConfig(); err != nil {

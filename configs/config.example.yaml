@@ -3,9 +3,22 @@ api:
   listen: ":8080"
   allow_origins:
     - "*"
+  enable_embedded_server: true
 
 logging:
   level: info
+  app_log:
+    filename: "logs/gitops-nginx.log"
+    max_size: 100    # megabytes
+    max_backups: 5   # number of backups
+    max_age: 30      # days
+    compress: true   # whether to compress
+  access_log:
+    filename: "logs/access.log"
+    max_size: 100
+    max_backups: 5
+    max_age: 30
+    compress: true
 
 etcd:
   endpoints: "http://127.0.0.1:2379"

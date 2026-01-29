@@ -2,7 +2,9 @@ package api
 
 import (
 	"context"
+	"embed"
 	"fmt"
+	"io/fs"
 	"net/http"
 	"sync"
 	"time"
@@ -22,14 +24,15 @@ type Server struct {
 	poolsMu    sync.Mutex
 }
 
-func NewServer(cfg *config.Config, etcdClient *etcd.Client) *Server {
+func NewServer(cfg *config.Config, etcdClient *etcd.Client, dist embed.FS) *Server {
 	s := &Server{
 		cfg:        cfg,
 		etcdClient: etcdClient,
-		router:     gin.Default(),
+		router:     gin.New(),
 		sshPools:   make(map[string]*ssh.SFTPPool),
 	}
 	s.setupRoutes()
+	s.setupStaticRoutes(dist)
 	return s
 }
 
@@ -51,6 +54,10 @@ func (s *Server) getPool(srvCfg *config.ServerConfig) (*ssh.SFTPPool, error) {
 }
 
 func (s *Server) setupRoutes() {
+	// Custom logger middleware
+	s.router.Use(log.GinMiddleware())
+	s.router.Use(gin.Recovery())
+
 	// CORS middleware
 	s.router.Use(func(c *gin.Context) {
 		allowOrigins := s.cfg.API.AllowOrigins
@@ -99,7 +106,54 @@ func (s *Server) setupRoutes() {
 		v1.GET("/git/status", s.handleGetGitStatus)
 	}
 
-	// Serve UI static files if needed or proxy
+}
+
+func (s *Server) setupStaticRoutes(dist embed.FS) {
+	// Serve embedded static files if enabled
+	if s.cfg.API.EnableEmbeddedServer {
+		// Get sub-filesystem from embed.FS (strip "dist" prefix)
+		subFS, err := fs.Sub(dist, "dist")
+		if err != nil {
+			log.Logger.Errorf("Failed to get sub filesystem: %v", err)
+			return
+		}
+
+		// Read index.html content once at startup
+		indexHTML, err := fs.ReadFile(subFS, "index.html")
+		if err != nil {
+			log.Logger.Errorf("Failed to read index.html: %v", err)
+			return
+		}
+
+		// Serve static files from embedded filesystem
+		s.router.StaticFS("/assets", http.FS(mustSub(subFS, "assets")))
+
+		// Serve index.html for root
+		s.router.GET("/", func(c *gin.Context) {
+			c.Data(http.StatusOK, "text/html; charset=utf-8", indexHTML)
+		})
+
+		// SPA fallback: serve index.html for unmatched routes (excluding /api)
+		s.router.NoRoute(func(c *gin.Context) {
+			// Don't serve index.html for API routes
+			if len(c.Request.URL.Path) >= 4 && c.Request.URL.Path[:4] == "/api" {
+				c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+				return
+			}
+			c.Data(http.StatusOK, "text/html; charset=utf-8", indexHTML)
+		})
+
+		log.Logger.Info("Embedded static server enabled, serving from embed.FS")
+	}
+}
+
+// mustSub returns a sub-filesystem or panics on error
+func mustSub(fsys fs.FS, dir string) fs.FS {
+	sub, err := fs.Sub(fsys, dir)
+	if err != nil {
+		panic(err)
+	}
+	return sub
 }
 
 func (s *Server) Start(ctx context.Context) error {

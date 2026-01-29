@@ -1,5 +1,9 @@
 .vscode/
-pkg/
+pkg/app/
 test/
 configs/servers.yaml
 configs/config.yaml
+cmd/gitops-nginx/__debug_bin*
+cmd/gitops-nginx/dist/
+bin/
+logs/

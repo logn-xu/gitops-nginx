@@ -1,6 +1,7 @@
 package main
 
 import (
+	"embed"
 	"os"
 	"os/signal"
 	"syscall"
@@ -14,13 +15,16 @@ import (
 	"github.com/logn-xu/gitops-nginx/pkg/log"
 )
 
+//go:embed dist/*
+var dist embed.FS
+
 func main() {
 	cfg, err := config.LoadConfig()
 	if err != nil {
 		log.Logger.Fatalf("failed to load configuration: %v", err)
 	}
 
-	log.SetLevel(cfg.Log.Level)
+	log.InitLoggers(&cfg.Log)
 	log.Logger.Info("configuration loaded successfully")
 
 	etcdClient, err := etcd.NewClient(cfg.Etcd)
@@ -62,7 +66,7 @@ func main() {
 	}
 
 	// Add API server
-	mgr.Add(api.NewServer(cfg, etcdClient))
+	mgr.Add(api.NewServer(cfg, etcdClient, dist))
 
 	// Start all services
 	log.Logger.Info("starting all services...")

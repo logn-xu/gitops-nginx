@@ -10,10 +10,10 @@ import (
 const defaultMaxCapacity = 10
 
 type SFTPPool struct {
-	pool        chan *Client                                             // 使用带缓冲的 channel 存储连接
-	factory     func(serverConfig *config.ServerConfig) (*Client, error) // 创建连接的工厂函数
-	maxCapacity int                                                      // 最大连接数
-	mu          sync.Mutex                                               // 保护 currentSize (如果需要精确控制创建数量)
+	pool        chan *Client                                             // Buffered channel storing connections
+	factory     func(serverConfig *config.ServerConfig) (*Client, error) // Factory function to create connections
+	maxCapacity int                                                      // Maximum number of connections
+	mu          sync.Mutex                                               // Protects currentSize (if precise control is needed)
 }
 
 // NewSFTPPool
