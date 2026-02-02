@@ -26,7 +26,7 @@ This allows updating the nginx server list without restarting the entire applica
 		fmt.Println("Configuration validation passed.")
 
 		// Read PID file
-		pidFile := "/tmp/gitops-nginx.pid"
+		pidFile := PidFilePath()
 		pidData, err := os.ReadFile(pidFile)
 		if err != nil {
 			return fmt.Errorf("failed to read PID file (%s): %w\nIs gitops-nginx running?", pidFile, err)

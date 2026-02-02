@@ -44,6 +44,9 @@ func NewSyncer(etcdClient *etcd.Client, serverConfig *config.ServerConfig, gitCo
 	}
 }
 
+// Reloadable returns true indicating this service can be hot-reloaded
+func (s *Syncer) Reloadable() bool { return true }
+
 // Start begins the asynchronous syncing process.
 func (s *Syncer) Start(ctx context.Context) error {
 	l := log.Logger.WithField("git_syncer", s.serverConfig.Host)

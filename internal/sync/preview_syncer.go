@@ -101,6 +101,9 @@ func NewPreviewSyncer(etcdClient *etcd.Client, serverConfig *config.ServerConfig
 	}, nil
 }
 
+// Reloadable returns true indicating this service can be hot-reloaded
+func (ps *PreviewSyncer) Reloadable() bool { return true }
+
 // Start begins the file watching process
 func (ps *PreviewSyncer) Start(ctx context.Context) error {
 	log := log.Logger.WithField("preview_syncer", ps.serverConfig.Host)

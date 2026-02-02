@@ -2,8 +2,10 @@ package cmd
 
 import (
 	"embed"
+	"fmt"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 	"time"
 
@@ -36,6 +38,15 @@ func init() {
 	rootCmd.AddCommand(uiCmd)
 }
 
+// PidFilePath returns the path to the PID file for the current user
+func PidFilePath() string {
+	runDir := fmt.Sprintf("/run/user/%d", os.Getuid())
+	if _, err := os.Stat(runDir); os.IsNotExist(err) {
+		runDir = os.TempDir()
+	}
+	return filepath.Join(runDir, "gitops-nginx.pid")
+}
+
 func runServer(withUI bool) error {
 	cfg, err := config.LoadConfig()
 	if err != nil {
@@ -54,44 +65,68 @@ func runServer(withUI bool) error {
 
 	mgr := manager.NewManager()
 
-	gitPollInterval := time.Duration(cfg.Sync.GitSyncer.IntervalSeconds) * time.Second
-	if gitPollInterval <= 0 {
-		gitPollInterval = 15 * time.Second
-	}
-
-	nginxPollInterval := time.Duration(cfg.Sync.NginxSyncer.IntervalSeconds) * time.Second
-	if nginxPollInterval <= 0 {
-		nginxPollInterval = 15 * time.Second
-	}
-
-	for _, group := range cfg.NginxServers {
-		for i := range group.Servers {
-			server := &group.Servers[i]
-			nginxSyncer := sync.NewNginxSyncer(etcdClient, server, &cfg.Sync, group.Group, nginxPollInterval)
-			gitSyncer := sync.NewSyncer(etcdClient, server, &cfg.Git, &cfg.Sync, group.Group, gitPollInterval)
-			previewSyncer, err := sync.NewPreviewSyncer(etcdClient, server, &cfg.Git, &cfg.Sync, group.Group)
-			if err != nil {
-				log.Logger.WithError(err).Errorf("failed to create preview syncer for %s", server.Host)
-			} else {
-				mgr.Add(previewSyncer)
-			}
-			mgr.Add(nginxSyncer)
-			mgr.Add(gitSyncer)
-		}
-	}
-
+	// Add API server (not reloadable)
 	if withUI {
 		mgr.Add(api.NewServer(cfg, etcdClient, dist))
 	} else {
 		mgr.Add(api.NewServerWithoutUI(cfg, etcdClient))
 	}
 
+	// Create syncer factory for reload
+	createSyncers := func() []manager.Service {
+		serverGroups, err := config.ValidateServersConfig()
+		if err != nil {
+			log.Logger.WithError(err).Error("failed to reload servers config")
+			return nil
+		}
+
+		gitInterval := max(time.Duration(cfg.Sync.GitSyncer.IntervalSeconds)*time.Second, 15*time.Second)
+		nginxInterval := max(time.Duration(cfg.Sync.NginxSyncer.IntervalSeconds)*time.Second, 15*time.Second)
+
+		var services []manager.Service
+		for _, group := range serverGroups {
+			for _, server := range group.Servers {
+				nginxSyncer := sync.NewNginxSyncer(etcdClient, &server, &cfg.Sync, group.Group, nginxInterval)
+				gitSyncer := sync.NewSyncer(etcdClient, &server, &cfg.Git, &cfg.Sync, group.Group, gitInterval)
+				if previewSyncer, err := sync.NewPreviewSyncer(etcdClient, &server, &cfg.Git, &cfg.Sync, group.Group); err != nil {
+					log.Logger.WithError(err).Errorf("failed to create preview syncer for %s", server.Host)
+				} else {
+					services = append(services, previewSyncer)
+				}
+				services = append(services, nginxSyncer, gitSyncer)
+			}
+		}
+		return services
+	}
+
+	// Add initial syncers
+	for _, s := range createSyncers() {
+		mgr.AddReloadable(s)
+	}
+
+	// Write PID file
+	pidFile := PidFilePath()
+	if err := os.WriteFile(pidFile, []byte(fmt.Sprintf("%d", os.Getpid())), 0644); err != nil {
+		log.Logger.WithError(err).Warnf("failed to write PID file: %s", pidFile)
+	} else {
+		log.Logger.Infof("PID file written to %s", pidFile)
+	}
+	defer os.Remove(pidFile)
+
 	log.Logger.Info("starting all services...")
 	mgr.Start()
 
 	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	<-quit
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
+
+	for sig := range quit {
+		if sig == syscall.SIGHUP {
+			log.Logger.Info("received SIGHUP, reloading services...")
+			mgr.Reload(createSyncers)
+			continue
+		}
+		break
+	}
 	log.Logger.Info("shutting down services...")
 
 	mgr.Stop()

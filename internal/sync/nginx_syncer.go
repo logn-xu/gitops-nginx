@@ -38,6 +38,9 @@ func NewNginxSyncer(etcdClient *etcd.Client, serverConfig *config.ServerConfig, 
 	}
 }
 
+// Reloadable returns true indicating this service can be hot-reloaded
+func (ns *NginxSyncer) Reloadable() bool { return true }
+
 // Start begins the nginx configuration syncing process
 func (ns *NginxSyncer) Start(ctx context.Context) error {
 	l := log.Logger.WithField("nginx_syncer", ns.serverConfig.Host)
