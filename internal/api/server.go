@@ -36,6 +36,18 @@ func NewServer(cfg *config.Config, etcdClient *etcd.Client, dist embed.FS) *Serv
 	return s
 }
 
+// NewServerWithoutUI creates an API server without embedded UI
+func NewServerWithoutUI(cfg *config.Config, etcdClient *etcd.Client) *Server {
+	s := &Server{
+		cfg:        cfg,
+		etcdClient: etcdClient,
+		router:     gin.New(),
+		sshPools:   make(map[string]*ssh.SFTPPool),
+	}
+	s.setupRoutes()
+	return s
+}
+
 func (s *Server) getPool(srvCfg *config.ServerConfig) (*ssh.SFTPPool, error) {
 	s.poolsMu.Lock()
 	defer s.poolsMu.Unlock()
@@ -110,6 +122,7 @@ func (s *Server) setupRoutes() {
 
 func (s *Server) setupStaticRoutes(dist embed.FS) {
 	// Serve embedded static files if enabled
+	// Todo: remove this when we remove the embedded static files
 	if s.cfg.API.EnableEmbeddedServer {
 		// Get sub-filesystem from embed.FS (strip "dist" prefix)
 		subFS, err := fs.Sub(dist, "dist")

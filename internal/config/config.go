@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"net"
 	"strings"
 
 	"github.com/spf13/viper"
@@ -168,7 +169,18 @@ func LoadConfig() (*Config, error) {
 		return nil, fmt.Errorf("failed to unmarshal main config: %w", err)
 	}
 
-	// 2. Load servers.yaml (standalone file for nginx_servers)
+	// 2. Load and validate servers.yaml (standalone file for nginx_servers)
+	serverGroups, err := ValidateServersConfig()
+	if err != nil {
+		return nil, err
+	}
+	config.NginxServers = serverGroups
+
+	return &config, nil
+}
+
+// ValidateServersConfig validates the servers.yaml configuration
+func ValidateServersConfig() ([]NginxServerGroup, error) {
 	vServers := viper.New()
 	vServers.SetConfigName("servers")
 	vServers.SetConfigType("yaml")
@@ -176,21 +188,55 @@ func LoadConfig() (*Config, error) {
 	vServers.AddConfigPath(".")
 
 	if err := vServers.ReadInConfig(); err != nil {
-		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
-			return nil, fmt.Errorf("failed to read servers config file: %w", err)
+		return nil, fmt.Errorf("failed to read servers config file: %w", err)
+	}
+
+	var serverGroups struct {
+		NginxServers []NginxServerGroup `mapstructure:"nginx_servers"`
+	}
+	if err := vServers.Unmarshal(&serverGroups); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal servers config: %w", err)
+	}
+
+	if len(serverGroups.NginxServers) == 0 {
+		return nil, fmt.Errorf("no nginx server groups defined in configuration")
+	}
+
+	var errs []string
+	for _, group := range serverGroups.NginxServers {
+		if group.Group == "" {
+			errs = append(errs, "found group with empty name")
 		}
-	} else {
-		var serverGroups struct {
-			NginxServers []NginxServerGroup `mapstructure:"nginx_servers"`
+		if len(group.Servers) == 0 {
+			errs = append(errs, fmt.Sprintf("group '%s' has no servers defined", group.Group))
+			continue
 		}
-		if err := vServers.Unmarshal(&serverGroups); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal servers config: %w", err)
-		}
-		// Merge or set nginx_servers if present in servers.yaml
-		if len(serverGroups.NginxServers) > 0 {
-			config.NginxServers = serverGroups.NginxServers
+
+		for _, server := range group.Servers {
+			prefix := fmt.Sprintf("group '%s' server '%s'", group.Group, server.Name)
+			if server.Host == "" {
+				errs = append(errs, fmt.Sprintf("%s: host is empty", prefix))
+			} else if net.ParseIP(server.Host) == nil {
+				errs = append(errs, fmt.Sprintf("%s: host '%s' is not a valid IP address", prefix, server.Host))
+			}
+			if server.Port <= 0 || server.Port > 65535 {
+				errs = append(errs, fmt.Sprintf("%s: port %d is invalid (must be 1-65535)", prefix, server.Port))
+			}
+			if server.User == "" {
+				errs = append(errs, fmt.Sprintf("%s: user is empty", prefix))
+			}
+			if server.Auth.Method == "" {
+				errs = append(errs, fmt.Sprintf("%s: auth method is not set", prefix))
+			}
+			if server.NginxConfigDir == "" {
+				errs = append(errs, fmt.Sprintf("%s: nginx_config_dir is empty", prefix))
+			}
 		}
 	}
 
-	return &config, nil
+	if len(errs) > 0 {
+		return nil, fmt.Errorf("configuration validation failed:\n  - %s", strings.Join(errs, "\n  - "))
+	}
+
+	return serverGroups.NginxServers, nil
 }

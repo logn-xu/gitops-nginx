@@ -5,6 +5,14 @@ CMD_DIR := cmd/gitops-nginx
 UI_DIR := ui
 EMBED_DIR := $(CMD_DIR)/dist
 
+# Version info (can be overridden via environment or command line)
+VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
+BUILD_TIME := $(shell date -u '+%Y-%m-%d_%H:%M:%S')
+GIT_COMMIT := $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+LDFLAGS := -X 'github.com/logn-xu/gitops-nginx/cmd/gitops-nginx/cmd.Version=$(VERSION)' \
+           -X 'github.com/logn-xu/gitops-nginx/cmd/gitops-nginx/cmd.BuildTime=$(BUILD_TIME)' \
+           -X 'github.com/logn-xu/gitops-nginx/cmd/gitops-nginx/cmd.GitCommit=$(GIT_COMMIT)'
+
 # Tool Commands
 GO := go
 NPM := npm
@@ -36,7 +44,7 @@ help:
 build:
 	@echo "==> Building Backend..."
 	@mkdir -p $(BUILD_DIR)
-	CGO_ENABLED=0 $(GO) build -o $(BUILD_DIR)/$(PROJECT_NAME) ./$(CMD_DIR)
+	CGO_ENABLED=0 $(GO) build -ldflags "$(LDFLAGS)" -o $(BUILD_DIR)/$(PROJECT_NAME) ./$(CMD_DIR)
 
 # Build with embedded frontend (single binary)
 build-embed: build-frontend
@@ -46,7 +54,7 @@ build-embed: build-frontend
 	@if [ -d "$(UI_DIR)/dist" ]; then cp -r $(UI_DIR)/dist/* $(EMBED_DIR)/; fi
 	@echo "==> Building Backend (Embedded)..."
 	@mkdir -p $(BUILD_DIR)
-	CGO_ENABLED=0 $(GO) build -o $(BUILD_DIR)/$(PROJECT_NAME) ./$(CMD_DIR)
+	CGO_ENABLED=0 $(GO) build -ldflags "$(LDFLAGS)" -o $(BUILD_DIR)/$(PROJECT_NAME) ./$(CMD_DIR)
 
 # Build for all platforms
 build-all: build-frontend
@@ -58,7 +66,7 @@ build-all: build-frontend
 	@$(foreach PLATFORM,$(PLATFORMS), \
 		GOOS=$(word 1,$(subst /, ,$(PLATFORM))) \
 		GOARCH=$(word 2,$(subst /, ,$(PLATFORM))) \
-		CGO_ENABLED=0 $(GO) build -o $(BUILD_DIR)/$(PROJECT_NAME)-$(word 1,$(subst /, ,$(PLATFORM)))-$(word 2,$(subst /, ,$(PLATFORM))) ./$(CMD_DIR); \
+		CGO_ENABLED=0 $(GO) build -ldflags "$(LDFLAGS)" -o $(BUILD_DIR)/$(PROJECT_NAME)-$(word 1,$(subst /, ,$(PLATFORM)))-$(word 2,$(subst /, ,$(PLATFORM))) ./$(CMD_DIR); \
 	)
 
 # Build and package all platforms
