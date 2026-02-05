@@ -59,8 +59,9 @@
 ## 生产部署
 生产部署参考文档 [生产部署](./docs/DEPLOYMENT_CN.md)。
 
-## 项目结构
-关于详细的代码目录结构和模块说明，请参阅 [docs/PROJECT_STRUCTURE_CN.md](./docs/PROJECT_STRUCTURE_CN.md)。
+## 操作指南
+操作指南参考文档 [操作指南](./docs/OPERATING_GUIDE_CN.md)。
+
 
 ---
 *为运维工程师打造的高效配置管理工具。*
