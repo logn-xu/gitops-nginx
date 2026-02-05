@@ -7,3 +7,4 @@ cmd/gitops-nginx/__debug_bin*
 cmd/gitops-nginx/dist/
 bin/
 logs/
+docs/apiserv-cli.md

@@ -27,8 +27,8 @@ etcd:
 # Git Repository Configuration
 git:
   repo_url: "http://github.com/your-org/nginx-configs.git"
-  sync_mode: "rebase" 
-  repo_path: "./data/repo"
+  sync_mode: "rebase"  # expriment feature, reset mode is not recommended for production
+  repo_path: "./data/repo" # git repo clone path
   branch: "master"
   remote_name: "origin"
 

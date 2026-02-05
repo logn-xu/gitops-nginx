@@ -174,8 +174,8 @@ function App() {
         onConfirmApply={handleUpdateApply}
         data={updateResult}
       />
-      <Layout style={{ minHeight: "100vh" }}>
-        <Sider collapsible collapsed={collapsedNav} onCollapse={setCollapsedNav}>
+      <Layout style={{ height: "100vh", overflow: "hidden" }}>
+        <Sider collapsible collapsed={collapsedNav} onCollapse={setCollapsedNav} style={{ overflowY: "auto" }}>
           <div
             style={{
               height: 48,
@@ -203,7 +203,7 @@ function App() {
             selectedKeys={selectedGroup && selectedHost ? [`${selectedGroup}/${selectedHost}`] : []}
           />
         </Sider>
-        <Layout>
+        <Layout style={{ height: "100vh", overflow: "hidden" }}>
           <Header
             style={{
               background: "#fff",
@@ -212,6 +212,7 @@ function App() {
               display: "flex",
               alignItems: "center",
               justifyContent: "flex-end",
+              flexShrink: 0,
             }}
           >
             <Space>
@@ -222,7 +223,7 @@ function App() {
               <AutoRefresh onTrigger={() => setRefreshTrigger((p) => p + 1)} />
             </Space>
           </Header>
-          <Layout style={{ padding: 16, gap: 16 }}>
+          <Layout style={{ padding: 16, gap: 16, flex: 1, minHeight: 0 }}>
             <Sider width={280} style={{ background: "#fff", padding: 12 }}>
               <FileTree
                 treeData={treeData}
@@ -234,7 +235,7 @@ function App() {
                 onSelectFile={handleSelectFile}
               />
             </Sider>
-            <Content style={{ background: "#fff", padding: 16 }}>
+            <Content style={{ background: "#fff", padding: 16, overflowY: "auto" }}>
               <FileContentPanel
                 selectedFileKey={selectedFileKey}
                 fileDiff={fileDiff}
@@ -247,7 +248,7 @@ function App() {
               />
             </Content>
           </Layout>
-          <div style={{ padding: "0 16px 16px" }}>
+          <div style={{ padding: "0 16px 16px", flexShrink: 0 }}>
             <Text type="secondary">
               组: {selectedGroup || "-"} | 主机: {selectedHost || "-"} | 配置目录后缀: {selectedConfigSuffix || "-"} | 模式:{" "}
               {isPreviewMode ? "预览" : "生产"}

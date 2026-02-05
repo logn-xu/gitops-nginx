@@ -47,7 +47,7 @@
 ### 启动服务
 1. 启动后端服务：
    ```bash
-   go run cmd/gitops-nginx/main.go
+   go run cmd/gitops-nginx/main.go apiserver
    ```
 2. 启动前端界面：
    ```bash
@@ -56,8 +56,11 @@
    npm run dev
    ```
 
+## 生产部署
+生产部署参考文档 [生产部署](./docs/DEPLOYMENT_CN.md)。
+
 ## 项目结构
-关于详细的代码目录结构和模块说明，请参阅 [PROJECT_STRUCTURE.md](./PROJECT_STRUCTURE.md)。
+关于详细的代码目录结构和模块说明，请参阅 [docs/PROJECT_STRUCTURE_CN.md](./docs/PROJECT_STRUCTURE_CN.md)。
 
 ---
 *为运维工程师打造的高效配置管理工具。*

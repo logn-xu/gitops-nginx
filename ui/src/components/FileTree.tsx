@@ -25,13 +25,14 @@ export function FileTree({
   onSelectFile,
 }: FileTreeProps) {
   return (
-    <>
+    <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
       <div
         style={{
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
           marginBottom: 8,
+          flexShrink: 0,
         }}
       >
         <Title level={5} style={{ margin: 0 }}>
@@ -45,21 +46,23 @@ export function FileTree({
           unCheckedChildren="变更"
         />
       </div>
-      <Spin spinning={loading}>
-        {treeData.length === 0 ? (
-          <Empty description="暂无文件" />
-        ) : (
-          <Tree
-            key={treeKey}
-            treeData={treeData}
-            onSelect={onSelectFile}
-            selectedKeys={selectedFileKey ? [selectedFileKey] : []}
-            defaultExpandAll
-            showLine
-          />
-        )}
-      </Spin>
-      <div style={{ marginTop: 12, borderTop: "1px solid #f0f0f0", paddingTop: 8 }}>
+      <div style={{ flex: 1, overflowY: "auto", minHeight: 0 }}>
+        <Spin spinning={loading}>
+          {treeData.length === 0 ? (
+            <Empty description="暂无文件" />
+          ) : (
+            <Tree
+              key={treeKey}
+              treeData={treeData}
+              onSelect={onSelectFile}
+              selectedKeys={selectedFileKey ? [selectedFileKey] : []}
+              defaultExpandAll
+              showLine
+            />
+          )}
+        </Spin>
+      </div>
+      <div style={{ marginTop: 12, borderTop: "1px solid #f0f0f0", paddingTop: 8, flexShrink: 0 }}>
         <Text type="secondary" style={{ fontSize: 12 }}>
           图例：
         </Text>
@@ -72,6 +75,6 @@ export function FileTree({
           ))}
         </div>
       </div>
-    </>
+    </div>
   );
 }
